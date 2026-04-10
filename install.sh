@@ -1,12 +1,12 @@
 #!/bin/bash
-# 🚀 Hermes WeChat iLink 一键安装脚本
-# 最终版 - 完全解决导入问题
+# 🚀 Hermes WeChat iLink 一键安装脚本 v2.0.1
+# 修复版 - 解决依赖安装和文件下载问题
 
 set -e
 
 echo "======================================================"
-echo "🚀 Hermes WeChat iLink 最终版安装脚本"
-echo "📱 解决 'No module named hermes_wechat_ilink' 问题"
+echo "🚀 Hermes WeChat iLink 安装脚本 v2.0.1"
+echo "🔧 修复依赖安装和文件下载问题"
 echo "======================================================"
 
 # 颜色定义
@@ -35,23 +35,7 @@ else
     print_warning "Python $PYTHON_VERSION 可能过旧，建议升级到 3.8+"
 fi
 
-# 2. 安装依赖
-print_info "安装依赖..."
-if command -v pip3 &> /dev/null; then
-    PIP_CMD="pip3"
-elif command -v pip &> /dev/null; then
-    PIP_CMD="pip"
-else
-    print_error "未找到 pip/pip3，请先安装"
-    exit 1
-fi
-
-$PIP_CMD install qrcode[pil] aiohttp --quiet 2>/dev/null || {
-    print_warning "依赖安装失败，尝试继续..."
-    echo "请手动安装: $PIP_CMD install qrcode[pil] aiohttp"
-}
-
-# 3. 确定Hermes插件目录
+# 2. 确定Hermes插件目录
 print_info "查找 Hermes 安装目录..."
 
 HERMES_PATHS=(
@@ -59,13 +43,13 @@ HERMES_PATHS=(
     "/opt/hermes-agent"
     "$HOME/.hermes"
     "/usr/local/bin"
-    "$(pwd)"
 )
 
 HERMES_DIR=""
 for path in "${HERMES_PATHS[@]}"; do
     if [ -d "$path" ]; then
         HERMES_DIR="$path"
+        print_success "找到 Hermes 目录: $HERMES_DIR"
         break
     fi
 done
@@ -73,137 +57,200 @@ done
 if [ -z "$HERMES_DIR" ]; then
     print_warning "未自动找到 Hermes 目录，使用默认路径"
     HERMES_DIR="/opt/hermes-agent/hermes-agent-main"
+    print_info "将使用默认路径: $HERMES_DIR"
 fi
 
 TARGET_PLUGIN_DIR="$HERMES_DIR/plugins/memory/hermes_wechat_ilink"
 print_info "插件将安装到: $TARGET_PLUGIN_DIR"
 
+# 3. 创建目录
+mkdir -p "$TARGET_PLUGIN_DIR"
+
 # 4. 备份现有插件
-if [ -d "$TARGET_PLUGIN_DIR" ]; then
+if [ "$(ls -A "$TARGET_PLUGIN_DIR" 2>/dev/null)" ]; then
     BACKUP_DIR="$TARGET_PLUGIN_DIR.backup.$(date +%s)"
     print_info "备份现有插件到: $BACKUP_DIR"
     cp -r "$TARGET_PLUGIN_DIR" "$BACKUP_DIR"
     print_success "备份完成"
 fi
 
-# 5. 清理并创建目标目录
-print_info "创建纯净插件目录..."
-rm -rf "$TARGET_PLUGIN_DIR"
-mkdir -p "$TARGET_PLUGIN_DIR"
+# 5. 安装依赖（改进版）
+print_info "安装依赖 (qrcode[pil] aiohttp)..."
+DEPENDENCIES_INSTALLED=false
 
-# 6. 从当前目录或网络获取插件文件
-print_info "获取插件文件..."
-
-# 当前脚本目录
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_FILES_DIR="$SCRIPT_DIR/hermes_wechat_ilink"
-
-if [ -d "$PLUGIN_FILES_DIR" ]; then
-    # 从本地复制
-    cp -r "$PLUGIN_FILES_DIR"/* "$TARGET_PLUGIN_DIR"/
-    print_success "从本地复制插件文件"
-else
-    # 从GitHub下载核心文件
-    print_info "从GitHub下载插件文件..."
-    FILES=(
-        "hermes_wechat_ilink/__init__.py"
-        "hermes_wechat_ilink/__main__.py"
-        "hermes_wechat_ilink/auth_manager.py"
-        "hermes_wechat_ilink/wechat_client.py"
-        "hermes_wechat_ilink/plugin.yaml"
-    )
-    
-    for file in "${FILES[@]}"; do
-        filename=$(basename "$file")
-        url="https://raw.githubusercontent.com/liangminmx/hermes-wechat-ilink/main/$file"
-        print_info "下载: $filename"
-        curl -sL "$url" -o "$TARGET_PLUGIN_DIR/$filename" 2>/dev/null ||             print_warning "下载失败: $filename"
-    done
+# 尝试多种安装方式
+if command -v pip3 &> /dev/null; then
+    print_info "使用 pip3 安装..."
+    if pip3 install qrcode[pil] aiohttp --quiet 2>/dev/null; then
+        DEPENDENCIES_INSTALLED=true
+        print_success "依赖安装成功 (使用 pip3)"
+    fi
 fi
 
-# 7. 创建全局命令
+if [ "$DEPENDENCIES_INSTALLED" = "false" ] && command -v pip &> /dev/null; then
+    print_info "使用 pip 安装..."
+    if pip install qrcode[pil] aiohttp --quiet 2>/dev/null; then
+        DEPENDENCIES_INSTALLED=true
+        print_success "依赖安装成功 (使用 pip)"
+    fi
+fi
+
+if [ "$DEPENDENCIES_INSTALLED" = "false" ]; then
+    print_warning "自动依赖安装失败"
+    print_info "将尝试不安装依赖继续，稍后可手动安装:"
+    print_info "   pip install qrcode[pil] aiohttp"
+    print_info "   pip3 install qrcode[pil] aiohttp"
+    print_info "   python3 -m pip install qrcode[pil] aiohttp"
+fi
+
+# 6. 获取插件文件（修复版）
+print_info "获取插件文件..."
+cd "$TARGET_PLUGIN_DIR"
+
+# 方法1: 尝试从Git克隆
+if command -v git &> /dev/null; then
+    print_info "使用Git下载插件..."
+    TEMP_DIR=$(mktemp -d)
+    if git clone --depth=1 https://github.com/liangminmx/hermes-wechat-ilink.git "$TEMP_DIR" 2>/dev/null; then
+        print_success "Git克隆成功"
+        # 复制文件
+        if [ -f "$TEMP_DIR/hermes_wechat_ilink/__init__.py" ]; then
+            cp -r "$TEMP_DIR/hermes_wechat_ilink"/* .
+        else
+            print_warning "插件文件结构异常"
+        fi
+        rm -rf "$TEMP_DIR"
+    else
+        print_warning "Git下载失败，使用curl下载"
+    fi
+fi
+
+# 方法2: 直接curl下载（修复URL路径）
+print_info "下载核心插件文件..."
+
+# GitHub raw URL基础路径
+GITHUB_BASE="https://raw.githubusercontent.com/liangminmx/hermes-wechat-ilink/main"
+
+# 核心文件列表
+CORE_FILES=(
+    "hermes_wechat_ilink/__init__.py"
+    "hermes_wechat_ilink/__main__.py"
+    "hermes_wechat_ilink/auth_manager.py"
+    "hermes_wechat_ilink/wechat_client.py"
+    "hermes_wechat_ilink/plugin.yaml"
+    "requirements.txt"
+)
+
+for file in "${CORE_FILES[@]}"; do
+    FILENAME=$(basename "$file")
+    
+    # 使用更可靠的下载方式
+    print_info "  下载: $FILENAME"
+    
+    # 尝试多个URL路径
+    URLS=(
+        "$GITHUB_BASE/$file"
+        "https://cdn.jsdelivr.net/gh/liangminmx/hermes-wechat-ilink@main/$file"
+        "https://raw.github.com/liangminmx/hermes-wechat-ilink/main/$file"
+    )
+    
+    for url in "${URLS[@]}"; do
+        if curl -sL "$url" -o "$FILENAME" 2>/dev/null; then
+            if [ -s "$FILENAME" ]; then
+                print_success "      ✅ 下载成功 (从 $(echo "$url" | cut -d'/' -f3))"
+                break
+            fi
+        fi
+    done
+    
+    if [ ! -s "$FILENAME" ]; then
+        print_warning "      ⚠️  下载失败: $FILENAME"
+    fi
+done
+
+# 7. 检查核心文件
+print_info "验证文件..."
+REQUIRED_FILES=("__init__.py" "__main__.py" "auth_manager.py" "wechat_client.py")
+MISSING_COUNT=0
+
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ -f "$file" ]; then
+        print_success "  ✅ $file (存在, $(wc -l < "$file") 行)"
+    else
+        print_error "  ❌ $file (缺失)"
+        MISSING_COUNT=$((MISSING_COUNT + 1))
+    fi
+done
+
+if [ $MISSING_COUNT -gt 0 ]; then
+    print_warning "⚠️  缺少 $MISSING_COUNT 个核心文件"
+    print_info "可以从备份恢复或重新下载"
+fi
+
+# 8. 创建全局命令（简化但可靠）
 print_info "创建全局命令..."
+
 GLOBAL_CMD="/usr/local/bin/hermes-wechat"
 
 cat > "$GLOBAL_CMD" << 'EOF'
 #!/bin/bash
 # Hermes WeChat iLink 命令行工具
-# 全局命令 - 解决模块导入问题
 
+# 优先使用已知的插件目录
 PLUGIN_DIR="/opt/hermes-agent/hermes-agent-main/plugins/memory/hermes_wechat_ilink"
 
-# 如果默认目录不存在，尝试自动查找
+# 检查目录是否存在
 if [ ! -d "$PLUGIN_DIR" ]; then
-    # 尝试其他可能位置
-    possible_paths=(
-        "/opt/hermes-agent/hermes-agent-main/plugins/memory/hermes_wechat_ilink"
-        "/opt/hermes-agent/plugins/memory/hermes_wechat_ilink"
-        "$HOME/.hermes/plugins/memory/hermes_wechat_ilink"
-    )
-    
-    for path in "${possible_paths[@]}"; do
-        if [ -d "$path" ]; then
-            PLUGIN_DIR="$path"
-            break
-        fi
-    done
-fi
-
-if [ ! -d "$PLUGIN_DIR" ]; then
-    echo "❌ 错误: 找不到插件目录"
-    echo "📋 请先安装插件:"
-    echo "   curl -sL https://raw.githubusercontent.com/liangminmx/hermes-wechat-ilink/main/install.sh | bash"
+    echo "❌ 错误: 插件目录不存在: $PLUGIN_DIR"
+    echo "📋 运行路径示例:"
+    echo "   cd /opt/hermes-agent/hermes-agent-main/plugins/memory/hermes_wechat_ilink"
+    echo "   python3 __main__.py --auth"
     exit 1
 fi
 
+# 切换到插件目录
 cd "$PLUGIN_DIR" || {
     echo "❌ 无法进入插件目录: $PLUGIN_DIR"
     exit 1
 }
 
+# 检查依赖（只检查，不安装）
+if ! python3 -c "import qrcode, aiohttp" 2>/dev/null; then
+    echo "⚠️  缺少依赖，请先安装:"
+    echo "   pip install qrcode[pil] aiohttp"
+    echo ""
+fi
+
+# 运行插件
 exec python3 __main__.py "$@"
 EOF
 
 chmod +x "$GLOBAL_CMD"
 print_success "全局命令创建: $GLOBAL_CMD"
 
-# 8. 验证安装
-print_info "验证安装..."
+# 9. 创建备用的本地脚本
+print_info "创建备用脚本..."
+cat > "$TARGET_PLUGIN_DIR/run.sh" << 'EOF'
+#!/bin/bash
+# Hermes WeChat iLink 本地运行脚本
 
-cd "$TARGET_PLUGIN_DIR" 2>/dev/null && {
-    # 检查文件存在
-    REQUIRED_FILES=("__init__.py" "__main__.py" "auth_manager.py" "wechat_client.py")
-    missing_files=0
-    for file in "${REQUIRED_FILES[@]}"; do
-        if [ ! -f "$file" ]; then
-            print_warning "缺少文件: $file"
-            missing_files=$((missing_files + 1))
-        fi
-    done
-    
-    if [ $missing_files -eq 0 ]; then
-        print_success "✅ 所有必需文件都已安装"
-    else
-        print_warning "⚠️ 部分文件缺失，但安装继续"
-    fi
-    
-    # 测试导入
-    if python3 -c "
-import sys
-sys.path.insert(0, '.')
-try:
-    from __main__ import main
-    print('✅ 可以导入 main() 函数')
-except Exception as e:
-    print(f'❌ 导入错误: {e}')
-" 2>/dev/null; then
-        print_success "✅ 插件导入测试通过"
-    else
-        print_warning "⚠️ 导入测试有问题，但安装继续"
-    fi
-} || print_warning "⚠️ 无法进入插件目录验证"
+cd "$(dirname "$0")"
 
-# 9. 显示结果
+echo "🚀 Hermes 微信插件运行脚本"
+
+# 检查文件
+if [ ! -f "__main__.py" ]; then
+    echo "❌ 错误: __main__.py 不存在"
+    exit 1
+fi
+
+# 运行
+python3 __main__.py "$@"
+EOF
+
+chmod +x "$TARGET_PLUGIN_DIR/run.sh"
+
+# 10. 显示安装结果
 echo ""
 echo "======================================================"
 echo "✨ 安装完成！"
@@ -212,25 +259,48 @@ echo ""
 echo "📋 安装总结:"
 echo "   插件目录: $TARGET_PLUGIN_DIR"
 echo "   全局命令: $GLOBAL_CMD"
-echo "   依赖状态: ✅ 已安装 (qrcode[pil], aiohttp)"
+if [ "$DEPENDENCIES_INSTALLED" = "true" ]; then
+    echo "   依赖状态: ✅ 已安装 (qrcode[pil], aiohttp)"
+else
+    echo "   依赖状态: ⚠️  需要手动安装"
+    echo "       命令: pip install qrcode[pil] aiohttp"
+fi
+echo "   核心文件: $((${#REQUIRED_FILES[@]} - MISSING_COUNT))/4 个已安装"
 echo ""
-echo "🚀 使用方式 (4种方法):"
+
+echo "🚀 使用方式:"
 echo ""
 echo "   1. 全局命令 (推荐):"
 echo "      hermes-wechat --auth"
 echo "      hermes-wechat --status"
 echo ""
-echo "   2. 直接运行 (可靠):"
+echo "   2. 直接运行 (最可靠):"
 echo "      cd $TARGET_PLUGIN_DIR && python3 __main__.py --auth"
 echo ""
-echo "   3. Python模块:"
-echo "      python3 -m hermes_wechat_ilink.__main__ --auth"
+echo "   3. 本地脚本:"
+echo "      cd $TARGET_PLUGIN_DIR && ./run.sh --auth"
 echo ""
-echo "   4. 直接调用:"
-echo "      cd $TARGET_PLUGIN_DIR && python3 -c "import sys; sys.path.insert(0, '.'); from __main__ import main; main()" --auth"
+
+if [ $MISSING_COUNT -gt 0 ]; then
+    echo "⚠️  注意: 缺少 $MISSING_COUNT 个核心文件"
+    echo "   运行前请确保以下文件存在:"
+    for file in "${REQUIRED_FILES[@]}"; do
+        if [ ! -f "$TARGET_PLUGIN_DIR/$file" ]; then
+            echo "      ❌ $file"
+        fi
+    done
+    echo ""
+fi
+
+echo "📱 立即开始认证:"
+echo "   hermes-wechat --auth"
 echo ""
-echo "📱 立即开始: hermes-wechat --auth"
+echo "   或: cd $TARGET_PLUGIN_DIR && python3 __main__.py --auth"
 echo ""
 echo "❓ 问题反馈: https://github.com/liangminmx/hermes-wechat-ilink/issues"
 echo ""
 echo "======================================================"
+
+# 列出安装的文件
+echo "📁 安装的文件:"
+cd "$TARGET_PLUGIN_DIR" && ls -la *.py *.yaml *.sh 2>/dev/null || echo "无文件列表"
