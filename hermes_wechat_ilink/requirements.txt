@@ -1,0 +1,4 @@
+qrcode[pil]>=7.4.2
+aiohttp>=3.9.0
+# 可选：Pillow用于更好的二维码显示
+pillow>=10.0.0

@@ -1,0 +1,16 @@
+name: wechat-ilink
+version: 2.0.1
+description: WeChat iLink plugin for Hermes Agent (紧急修复版)
+author: 假装不单纯
+hooks:
+  on_initialize:
+    description: 插件初始化钩子
+  on_session_start:
+    description: 会话开始钩子
+  on_session_end:
+    description: 会话结束钩子
+tools:
+  - wechat_auth
+  - wechat_send_message
+  - wechat_get_messages
+  - wechat_status
