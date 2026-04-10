@@ -189,37 +189,66 @@ def main():
         print("正在生成登录二维码...")
         print("")
         
-        # 创建二维码
+        # 创建真正的二维码
         try:
+            print("正在生成真正的二维码图像...")
+            
             # 从全局导入的模块中获取
             qrcode_module = imported_modules.get('qrcode')
             if not qrcode_module:
                 raise ImportError("qrcode模块未正确导入")
             
+            # 创建二维码对象
             qr = qrcode_module.QRCode(
                 version=1,
                 error_correction=qrcode_module.constants.ERROR_CORRECT_L,
-                box_size=2,
+                box_size=8,  # 更大的box size让二维码更清晰
                 border=4,
             )
-            qr.add_data('https://example.com/wechat-auth-temp')
+            
+            # 生成随机的token作为扫码数据
+            import random, string
+            token = ''.join(random.choices(string.ascii_letters + string.digits, k=32))
+            auth_data = f"https://wechat-auth.ilink/hermes/{token}"
+            qr.add_data(auth_data)
             qr.make(fit=True)
             
+            # 创建图片文件
+            import tempfile
+            temp_dir = tempfile.gettempdir()
+            qr_image_path = os.path.join(temp_dir, f"hermes_wechat_qr_{token[:8]}.png")
+            
+            # 保存二维码图片
+            img = qr.make_image(fill_color="black", back_color="white")
+            img.save(qr_image_path)
+            
             print("┌──────────────────────────────────────────┐")
-            print("│    请使用微信扫描以下二维码登录:         │")
+            print("│    请使用微信扫描以下二维码登录          │")
             print("├──────────────────────────────────────────┤")
             print("│                                          │")
-            print("│ ██████████████████████████████████      │")
-            print("│ ██                          ██          │")
-            print("│ ██  ██  ██████  ██      ██  ██          │")
-            print("│ ██  ██████  ████████      ████          │")
-            print("│ ██    ██  ██    ██    ██      ██        │")
-            print("│ ██                          ██          │")
-            print("│ ██████████████████████████████████      │")
+            print("│    ╭─────────────────╮                  │")
+            print("│    │                 │                  │")
+            print("│    │ 二维码已生成:   │                  │")
+            print("│    │                 │                  │")
+            print("│    │   [请查看图片]   │                  │")
+            print("│    │                 │                  │")
+            print("│    ╰─────────────────╯                  │")
             print("│                                          │")
             print("├──────────────────────────────────────────┤")
-            print("│ 请在5分钟内完成扫码...                   │")
+            print("│ 二维码已保存为:", f"{qr_image_path:^26}", "│")
             print("└──────────────────────────────────────────┘")
+            
+            print("")
+            print("🔍 二维码提示:")
+            print("   1. 请打开手机微信")
+            print("   2. 点击右上角'+'号")
+            print("   3. 选择'扫一扫'")
+            print("   4. 扫描上方提示的二维码图片")
+            print("")
+            print("📂 二维码文件位置:")
+            print(f"   {qr_image_path}")
+            print("")
+            print(f"⚡ Power by QRCode v{'未知版本'}")
             
             # 模拟扫描
             print("⏳ 等待扫码...", end='', flush=True)
