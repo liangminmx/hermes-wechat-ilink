@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="hermes-wechat-ilink",
-    version="1.0.1",
+    version="1.0.2",
     author="假装不单纯",
     author_email="",
     description="WeChat iLink plugin for Hermes Agent",
