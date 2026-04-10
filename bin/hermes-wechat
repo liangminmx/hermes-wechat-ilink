@@ -1,0 +1,19 @@
+#!/bin/bash
+# Hermes WeChat iLink 命令行工具 (bin版本)
+# 如果全局安装后无效，可以使用此脚本
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && cd .. && pwd)"
+PLUGIN_DIR="$SCRIPT_DIR/hermes_wechat_ilink"
+
+if [ ! -d "$PLUGIN_DIR" ]; then
+    echo "❌ 错误: 插件目录不存在: $PLUGIN_DIR"
+    echo "📋 请确保插件已正确安装"
+    exit 1
+fi
+
+cd "$PLUGIN_DIR" || {
+    echo "❌ 无法进入插件目录: $PLUGIN_DIR"
+    exit 1
+}
+
+exec python3 __main__.py "$@"
