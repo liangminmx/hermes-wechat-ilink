@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+wechat_credentials.json
+.DS_Store
+.env
+.venv

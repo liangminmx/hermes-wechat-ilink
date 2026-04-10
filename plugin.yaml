@@ -1,0 +1,65 @@
+# WeChat iLink Plugin for Hermes Agent
+name: wechat-ilink
+version: "0.1.0"
+description: |
+  Direct WeChat integration using Tencent's official iLink API.
+  Pure Python implementation based on wx-robot-ilink protocol.
+  No third-party bridges - connects directly to WeChat.
+
+author: "Hermes Agent Development Team"
+license: "MIT"
+
+tags:
+  - wechat
+  - chatbot
+  - messaging
+  - ilink
+  - openclaw
+
+entry_points:
+  memory_provider: "@.create_memory_provider"
+
+hooks:
+  - event: session_start
+    handler: "on_session_start"
+    description: "Initialize WeChat plugin on session start"
+  
+  - event: session_end
+    handler: "on_session_end"
+    description: "Cleanup WeChat plugin on session end"
+
+dependencies:
+  - python >= 3.8
+  - aiohttp >= 3.9.0
+
+configuration:
+  enable_polling:
+    type: boolean
+    default: true
+    description: "Enable automatic background message polling"
+  
+  poll_interval:
+    type: integer
+    default: 5
+    description: "Polling interval in seconds"
+  
+  credentials_path:
+    type: string
+    default: "~/.hermes/wechat_credentials.json"
+    description: "Path to store authentication credentials"
+
+tools:
+  - name: wechat_auth
+    description: "Authenticate with WeChat using QR code"
+  
+  - name: wechat_send_message
+    description: "Send message directly to WeChat user"
+  
+  - name: wechat_get_messages
+    description: "Poll for new WeChat messages"
+  
+  - name: wechat_status
+    description: "Check plugin status and connection"
+  
+  - name: wechat_webhook_server
+    description: "Start HTTP webhook server for external integration"
