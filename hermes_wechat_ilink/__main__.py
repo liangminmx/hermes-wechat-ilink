@@ -9,8 +9,43 @@ import os
 import time
 import argparse
 
+# 全局导入变量，用于存储导入的模块
+imported_modules = {}
+
+def import_dependencies():
+    """导入所有必要的依赖模块，返回是否成功"""
+    global imported_modules
+    modules = {}
+    
+    try:
+        import qrcode
+        modules['qrcode'] = qrcode
+        print("✅ qrcode模块: 导入成功")
+    except ImportError:
+        print("❌ qrcode模块: 导入失败")
+        return False
+    
+    try:
+        import aiohttp
+        modules['aiohttp'] = aiohttp
+        print("✅ aiohttp模块: 导入成功")
+    except ImportError:
+        print("❌ aiohttp模块: 导入失败")
+        return False
+    
+    try:
+        from PIL import Image
+        modules['Image'] = Image
+        print("✅ Pillow模块: 导入成功")
+    except ImportError:
+        print("❌ Pillow模块: 缺少部分功能")
+        # Pillow不是绝对必需的，可以继续
+    
+    imported_modules = modules
+    return True
+
 def check_dependencies():
-    """检查依赖，返回是否缺少依赖"""
+    """检查依赖是否可用，返回是否缺少依赖"""
     print("🔍 检查依赖...")
     missing = []
     
@@ -32,8 +67,7 @@ def check_dependencies():
         from PIL import Image
         print("  ✅ Pillow模块: 已安装")
     except ImportError:
-        missing.append("Pillow (for PIL)")
-        print("  ❌ Pillow模块: 未安装")
+        print("  ⚠️  Pillow模块: 未安装（可选）")
     
     if missing:
         print("")
@@ -123,7 +157,7 @@ def main():
         print("📱 开始微信认证流程...")
         print("")
         
-        # 检查依赖
+        # 1. 先检查依赖是否安装
         if not check_dependencies():
             print("")
             print("❌ 无法开始认证: 缺少必要依赖")
@@ -142,16 +176,29 @@ def main():
             print("📁 安装后重新运行: hermes-wechat --auth")
             return 1
         
-        print("✅ 所有依赖检查通过，继续认证流程...")
+        print("✅ 依赖检查通过...")
+        
+        # 2. 导入依赖到全局命名空间
+        print("导入依赖模块...")
+        if not import_dependencies():
+            print("❌ 依赖导入失败，请确认依赖已正确安装")
+            return 1
+        
+        print("✅ 所有依赖导入成功，继续认证流程...")
         
         print("正在生成登录二维码...")
         print("")
         
         # 创建二维码
         try:
-            qr = qrcode.QRCode(
+            # 从全局导入的模块中获取
+            qrcode_module = imported_modules.get('qrcode')
+            if not qrcode_module:
+                raise ImportError("qrcode模块未正确导入")
+            
+            qr = qrcode_module.QRCode(
                 version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                error_correction=qrcode_module.constants.ERROR_CORRECT_L,
                 box_size=2,
                 border=4,
             )
