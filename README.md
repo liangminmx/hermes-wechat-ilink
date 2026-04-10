@@ -1,6 +1,11 @@
-# WeChat iLink Plugin for Hermes
+# Hermes WeChat iLink Plugin
 
 基于腾讯官方 OpenClaw 微信协议 (`@tencent-weixin/openclaw-weixin`) 的纯 Python 微信机器人插件。为 Hermes 提供直接的微信消息收发能力，无需任何第三方桥接服务。
+
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg?logo=python&logoColor=white)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/liangminmx/hermes-wechat-ilink?style=flat-square)](https://github.com/liangminmx/hermes-wechat-ilink/releases)
+[![Hermes Plugin](https://img.shields.io/badge/Hermes-Plugin-brightgreen?style=flat-square)](https://github.com/liangminmx)
 
 ## 🎯 核心优势
 
@@ -15,325 +20,373 @@
 | 特性 | wx-robot-ilink (TypeScript) | wechat-ilink (Python) |
 |------|-----------------------------|------------------------|
 | **语言** | TypeScript/Node.js | Python 3.8+ |
-| **部署** | Node.js 环境 | Python 虚拟环境 |
-| **协议** | `@tencent-weixin/openclaw-weixin` | 同款协议移植到 Python |
-| **架构** | 独立机器人程序 | Hermes 插件，可与其他工具联动 |
-| **集成** | HTTP API 接口 | Hermes 原生工具调用 |
+| **安装** | `npm install` | `pip install` 或 `./install.sh` |
+| **配置** | `.env` 文件 | `.env` 文件（同格式） |
+| **运行** | `npm run dev` | `python -m hermes_wechat_ilink` |
+| **集成** | 独立AI机器人 | Hermes插件，使用Hermes AI |
 
-**移植度**: 约 95%，包含完整认证流程、消息轮询、文本收发。
+**移植度**: 约 95%，包含完整认证流程、消息轮询、文本收发。AI对话功能由Hermes主Agent提供。
 
-## 🚀 快速开始
+## 🚀 快速开始（类似wx-robot-ilink安装体验）
 
-### 1. 安装依赖
+### 前提条件
+- Python 3.8+
+- pip 包管理工具
+- Hermes Agent（可选，插件模式需要）
+
+### 方式一：一键安装（推荐）
 ```bash
+# 克隆项目
+git clone https://github.com/liangminmx/hermes-wechat-ilink.git
+cd hermes-wechat-ilink
+
+# 一键安装（类似wx-robot-ilink：npm install）
+chmod +x install.sh
+./install.sh
+```
+**脚本会执行**:
+1. 检查Python环境
+2. 安装依赖（自动创建虚拟环境）
+3. 配置环境变量
+4. 复制到Hermes插件目录（如果Hermes存在）
+5. 验证安装
+
+### 方式二：手动安装
+```bash
+# 1. 克隆和依赖（类似npm install）
+git clone https://github.com/liangminmx/hermes-wechat-ilink.git
+cd hermes-wechat-ilink
 pip install -r requirements.txt
+
+# 2. 环境配置（类似wx-robot-ilink的.env）
+cp .env.example .env
+# 编辑 .env 文件（可选）
+
+# 3. 复制到Hermes插件目录
+./install.sh --skip-copy  # 不自动复制
+# 或手动复制到 plugins/memory/
 ```
 
-### 2. 启用插件
-将插件目录放置在 `~/.hermes/plugins/` 或 Hermes 的 `plugins/memory/` 目录下。Hermes 会自动发现并加载插件。
+### 方式三：开发模式安装
+```bash
+git clone https://github.com/liangminmx/hermes-wechat-ilink.git
+cd hermes-wechat-ilink
 
-### 3. 基本使用
+# 可编辑模式安装
+pip install -e .
+
+# 安装开发工具
+pip install black ruff pytest
+```
+
+## 🔧 使用方式
+
+### 作为Hermes插件使用（推荐）
+```bash
+# 1. 启动Hermes Agent
+# 2. 使用插件提供的5个工具：
+
+/wechat_auth            # 微信登录认证（显示二维码）
+/wechat_status          # 查看连接状态  
+/wechat_get_messages    # 接收微信消息
+/wechat_send_message    # 发送微信消息
+/wechat_webhook_server  # 启动HTTP服务器
+```
+
+### 独立运行（测试模式）
+与wx-robot-ilink类似，可以直接运行：
+```bash
+# 独立认证（类似wx-robot-ilink npm run dev）
+python -m hermes_wechat_ilink --auth
+
+# 发送消息
+python -m hermes_wechat_ilink --send --to "wxid_xxx" --message "你好"
+
+# 接收消息
+python -m hermes_wechat_ilink --receive --timeout 30
+
+# 查看状态
+python -m hermes_wechat_ilink --status
+
+# 清除凭证
+python -m hermes_wechat_ilink --logout
+```
+
+### 开发调用
 ```python
-# 在 Hermes 中调用
-/wechat_auth      # 微信扫码认证
-/wechat_status    # 查看连接状态
-/wechat_send_message --to_user_id wxid_xxxx --message "你好！"
-/wechat_get_messages --timeout 30
+# 在你的Python代码中直接使用
+from hermes_wechat_ilink import create_memory_provider
+
+provider = create_memory_provider()
+result = await provider.call_tool("wechat_status")
+print(result)
 ```
 
-## 📦 安装
+## 📁 项目结构（与wx-robot-ilink对比）
 
-### 选项一：手动安装
+```
+# wx-robot-ilink (Node.js/TypeScript)
+wx-robot-ilink/
+├── src/                    # 源代码
+├── .env.example           # 环境变量模板
+├── package.json          # Node.js配置
+└── npm run dev           # 启动命令
+
+# hermes-wechat-ilink (Python)
+hermes-wechat-ilink/
+├── hermes_wechat_ilink/  # Python包源代码（类似src/）
+├── .env.example          # 环境变量模板（同格式）
+├── requirements.txt      # 依赖（类似package.json）
+├── setup.cfg            # 包配置
+├── install.sh           # 安装脚本（类似npm install）
+├── examples/            # 使用示例
+├── tests/               # 测试
+├── Makefile             # 开发命令
+└── README.md
+```
+
+## ⚙️ 配置说明
+
+### 环境变量配置（`.env`文件）
 ```bash
-# 1. 克隆插件到 Hermes 插件目录
-cd /opt/hermes-agent/hermes-agent-main/plugins/memory/
-git clone <repository-url> wechat-ilink
-
-# 2. 安装依赖
-cd wechat-ilink
-pip install -r requirements.txt
-
-# 3. 重启 Hermes
+# 复制模板并编辑
+cp .env.example .env
+nano .env  # 或 vim .env
 ```
 
-### 选项二：通过 Hermes CLI 安装
-```bash
-# 将插件打包后可通过 /skills 命令安装
+`.env` 文件示例：
+```env
+# 基础配置
+WECHAT_POLL_INTERVAL=5
+WECHAT_API_TIMEOUT=15
+
+# 调试模式
+WECHAT_DEBUG=false
+WECHAT_LOG_LEVEL=INFO
+
+# Webhook服务器
+WECHAT_WEBHOOK_ENABLED=false
+WECHAT_WEBHOOK_PORT=8080
 ```
 
-## 🔧 使用方法
+**关键区别**: 相比wx-robot-ilink，我们**不需要**配置：
+- `OPENAI_API_KEY` - AI由Hermes提供
+- `OPENAI_BASE_URL` - 使用Hermes配置
+- `OPENAI_MODEL` - 使用Hermes模型
+- `SYSTEM_PROMPT` - 在Hermes中配置
 
-### 认证流程
-1. **启动认证**: 调用 `wechat_auth` 工具
-2. **扫码登录**: 插件将显示二维码（控制台或网页）
-3. **自动轮询**: 认证成功后自动开始接收消息
-
-```json
-{
-  "步骤": "微信 OAuth 2.0 扫码登录",
-  "技术栈": "Tencent iLink 网关",
-  "持久化": "凭证保存在 ~/.hermes/wechat_credentials.json"
-}
-```
-
-### 消息收发
-
-**发送消息**:
-```bash
-/wechat_send_message --to_user_id "wxid_abcdef" --message "你好，我是Hermes微信机器人！"
-```
-
-**接收消息**:
-```bash
-/wechat_get_messages --timeout 30 --extract_text true
-```
-
-**实时轮询**:
-- 插件启动后自动后台轮询
-- 新消息存入队列，可通过工具提取
-- 支持上下文令牌保持对话连贯性
-
-## 🛠 工具参考
-
-### 1. `wechat_auth`
-微信扫码认证。
-
-**参数**:
-- `server_url`: (可选) iLink 服务器地址
-- `qr_only`: (可选) 仅显示二维码，不开始轮询
-
-**返回示例**:
-```json
-{
-  "status": "qr_generated",
-  "qrcode": "terminal_ascii_qr_or_url",
-  "polling_url": "http://localhost:8080/qr_status"
-}
-```
-
-### 2. `wechat_send_message`
-发送消息到指定微信用户。
-
-**参数**:
-- `to_user_id`: (必需) 目标微信用户ID
-- `message`: (必需) 消息文本
-- `context_token`: (可选) 上下文令牌
-
-**返回示例**:
-```json
-{
-  "success": true,
-  "to_user_id": "wxid_123456",
-  "sent_at": 1712822400.123,
-  "message_preview": "你好..."
-}
-```
-
-### 3. `wechat_get_messages`
-获取新消息（长轮询）。
-
-**参数**:
-- `timeout`: (可选) 等待超时时间，默认30秒
-- `extract_text`: (可选) 提取消息文本，默认true
-- `only_unread`: (可选) 仅未读消息，默认true
-
-**返回示例**:
-```json
-{
-  "success": true,
-  "messages": [
-    {
-      "id": 1,
-      "from_user_id": "wxid_abcdef",
-      "text": "你好，机器人",
-      "received_at": 1712822400.456
-    }
-  ],
-  "count": 1
-}
-```
-
-### 4. `wechat_status`
-查看插件状态。
-
-**返回示例**:
-```json
-{
-  "authenticated": true,
-  "polling_active": true,
-  "queue_size": 5,
-  "unread_messages": 2,
-  "account_id": "wxid_robot123",
-  "base_url": "https://ilink.tencent.com"
-}
-```
-
-### 5. `wechat_webhook_server`
-启动HTTP服务器，提供ClawBot兼容接口。
-
-**参数**:
-- `port`: (可选) 端口号，默认8080
-- `host`: (可选) 监听地址，默认"0.0.0.0"
-- `webhook_path`: (可选) webhook路径，默认"/wechat/webhook"
-
-## ⚙️ 配置
-
-### 环境变量
-```bash
-# 可选：设置凭证存储路径
-export WECHAT_CREDENTIALS_PATH="~/.hermes/wechat_credentials.json"
-
-# 可选：自定义iLink服务器
-export WECHAT_ILINK_BASE_URL="https://ilink.tencent.com"
-```
-
-### 配置文件
-通过 Hermes 配置文件 `~/.hermes/config.yaml` 设置:
-
+### Hermes配置文件
+插件自动适配Hermes配置：
 ```yaml
+# ~/.hermes/config.yaml
 wechat-ilink:
   enable_polling: true
   poll_interval: 5
   credentials_path: "~/.hermes/wechat_credentials.json"
-  webhook_enabled: false
-  webhook_port: 8080
 ```
 
-## 🧩 与现有插件集成
+## 🔌 主要工具API
 
-### 1. 与 `webhook-bridge` 插件协同
-```python
-# wechat-ilink 负责微信连接
-# webhook-bridge 提供通用HTTP接口
-# 两者可配合提供完整的 ClawBot 解决方案
-```
-
-### 2. 作为 Hermes 工具调用
-```python
-# 其他插件可通过内存提供者接口调用微信功能
-from plugins.memory.wechat_ilink import create_memory_provider
-
-wechat = create_memory_provider()
-result = await wechat.call_tool("wechat_send_message", 
-                               to_user_id="wxid_xxx",
-                               message="Hello from another plugin!")
-```
-
-## 🚦 状态代码参考
-
-### 认证状态
-- `waiting`: 等待扫码
-- `scaned`: 已扫码，等待确认
-- `confirmed`: 登录成功
-- `expired`: 二维码过期
-
-### API 返回码
-| 代码 | 说明 |
-|------|------|
-| `0` | 成功 |
-| `-1` | 通用错误 |
-| `1001` | 认证失败 |
-| `1002` | Token过期 |
-| `1003` | 权限不足 |
-
-## 🔒 安全与隐私
-
-### 数据存储
-- 凭证信息本地加密存储
-- 消息队列仅保存在内存中
-- 支持手动清除凭证
-
-### 权限控制
+### `wechat_auth` - 认证登录
 ```bash
-# 清除登录凭证
-/wechat_auth --logout
+# 扫码登录（类似wx-robot-ilink登录流程）
+/wechat_auth
 
-# 查看活跃会话
-/wechat_status
+# 仅生成二维码
+/wechat_auth --qr_only true
+
+# 清除凭证（登出）
+/wechat_auth --logout
 ```
 
-## 🐛 故障排除
+### `wechat_send_message` - 发送消息
+```bash
+# 发送文本
+/wechat_send_message --to_user_id "wxid_xxx" --message "你好"
+
+# 发送带上下文的回复
+/wechat_send_message --to_user_id "wxid_xxx" --message "已处理" --context_token "ctx_123"
+```
+
+### `wechat_get_messages` - 接收消息
+```bash
+# 长轮询接收（30秒超时）
+/wechat_get_messages --timeout 30
+
+# 获取未读消息
+/wechat_get_messages --only_unread true
+```
+
+### `wechat_status` - 状态检查
+```bash
+/wechat_status
+# 返回：认证状态、轮询状态、队列大小、连接时间等
+```
+
+## 🎯 使用示例
+
+### 场景1：基本认证和聊天
+```bash
+# 1. 认证
+/wechat_auth
+# ↑ 终端显示二维码，微信扫码登录
+
+# 2. 发送测试消息
+/wechat_send_message --to_user_id "wxid_测试" --message "hello"
+
+# 3. 接收消息
+/wechat_get_messages --timeout 10
+```
+
+### 场景2：集成到Hermes自动化流程
+```bash
+# 创建定时任务：每天早上9点发送问候
+/cronjob create \
+  --name "早安问候" \
+  --schedule "0 9 * * *" \
+  --skills "wechat_ilink" \
+  --prompt "给微信好友wxid_xxx发送早安消息" \
+  --deliver "origin"
+```
+
+### 场景3：独立运行测试
+```bash
+# 像使用wx-robot-ilink一样测试
+python -m hermes_wechat_ilink --auth
+python -m hermes_wechat_ilink --status
+python -m hermes_wechat_ilink --send --to wxid_xxx --message "测试"
+```
+
+## 🔧 开发者指南
+
+### 从wx-robot-ilink移植
+```bash
+# 如果你熟悉wx-robot-ilink，移植非常直接：
+
+# 1. TypeScript auth.ts → Python auth_manager.py
+# 2. TypeScript api.ts → Python wechat_client.py  
+# 3. TypeScript types.ts → Python 中的类和枚举
+# 4. TypeScript bot.ts → Hermes插件消息循环
+```
+
+### 开发环境设置
+```bash
+git clone https://github.com/liangminmx/hermes-wechat-ilink.git
+cd hermes-wechat-ilink
+
+# 安装开发依赖
+make install-dev
+
+# 运行测试
+make test
+
+# 代码检查
+make lint
+
+# 格式化代码
+make format
+```
+
+### 代码结构对应表
+| wx-robot-ilink文件 | Python实现 | 状态 |
+|-------------------|------------|------|
+| `src/weixin/auth.ts` | `auth_manager.py` | ✅ |
+| `src/weixin/api.ts` | `wechat_client.py` | ✅ |
+| `src/weixin/types.ts` | `wechat_client.py`中的类 | ✅ |
+| `src/bot.ts` | `__init__.py`中的消息循环 | ✅ |
+| `src/ai/chat.ts` | 使用Hermes AI | ⏸️ |
+
+## 🚨 故障排除
 
 ### 常见问题
 
-1. **二维码无法显示**
-   ```bash
-   # 安装二维码生成依赖
-   pip install qrcode[pil] pillow
-   ```
-
-2. **认证失败**
-   ```bash
-   # 清除旧凭证重试
-   /wechat_auth --logout
-   /wechat_auth
-   ```
-
-3. **无法接收消息**
-   ```bash
-   # 检查网络连接和插件的轮询状态
-   /wechat_status
-   ```
-
-4. **消息发送失败**
-   ```bash
-   # 确认用户ID是否正确，token是否有效
-   ```
-
-### 日志调试
-```python
-import logging
-logging.getLogger("wechat_ilink").setLevel(logging.DEBUG)
-```
-
-## 🤝 贡献与开发
-
-### 项目结构
-```
-wechat-ilink/
-├── __init__.py          # 主插件入口，Hermes工具定义
-├── wechat_client.py     # 微信iLink API客户端核心
-├── plugin.yaml         # 插件元数据
-├── requirements.txt    # Python依赖
-├── README.md           # 本文档
-└── tests/             # 测试目录（待补充）
-```
-
-### 待实现功能
-- [ ] 完整的QR扫码显示和状态轮询
-- [ ] 图片、语音、文件消息支持
-- [ ] 群聊消息处理
-- [ ] 联系人管理
-- [ ] Webhook服务器完整实现
-
-### 开发指南
+**1. 安装脚本失败**
 ```bash
-# 1. 克隆项目
-git clone <repo>
-
-# 2. 开发环境
-python -m venv venv
+# 手动执行安装步骤
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+```
 
-# 3. 运行测试
-python -m pytest tests/
+**2. 二维码无法显示**
+```bash
+# 确保安装二维码依赖
+pip install qrcode[pil] pillow
+
+# 检查终端是否支持
+echo $TERM
+```
+
+**3. 认证失败**
+```bash
+# 清除旧凭证重新登录
+/wechat_auth --logout
+/wechat_auth
+
+# 或独立运行
+python -m hermes_wechat_ilink --logout
+python -m hermes_wechat_ilink --auth
+```
+
+**4. Hermes找不到插件**
+```bash
+# 1. 确认插件已复制到正确位置
+#    Hermes插件目录：plugins/memory/hermes_wechat_ilink/
+
+# 2. 重启Hermes
+
+# 3. 检查日志
+tail -f ~/.hermes/logs/hermes.log
 ```
 
 ## 📄 协议与许可
 
-基于 `wx-robot-ilink` (MIT) 协议移植，遵循相同使用条款。
+- **软件许可证**: [MIT License](LICENSE)（与wx-robot-ilink相同）
+- **协议来源**: 腾讯官方 `@tencent-weixin/openclaw-weixin`
+- **参考项目**: [wx-robot-ilink](https://github.com/co-pine/wx-robot-ilink) (MIT License)
 
-**重要**: 使用微信官方API需遵守腾讯服务条款，禁止用于垃圾消息、欺诈等非法用途。
+**重要提示**:
+1. 使用微信官方API需遵守[腾讯服务条款](https://weixin.qq.com/cgi-bin/readtemplate?t=weixin_agreement&lang=zh_CN)
+2. 插件仅供个人学习和开发测试使用
+3. 禁止用于垃圾消息、欺诈、骚扰等非法用途
 
-## 📞 支持与反馈
+## 🤝 贡献与支持
 
-- **Issues**: 功能请求或问题报告
-- **文档**: 本文档在线版本
-- **社区**: Hermes Discord/Telegram 频道
+### 从wx-robot-ilink移植贡献
+- 熟悉wx-robot-ilink的开发者特别欢迎
+- 可以直接基于其最新代码改进Python实现
+- Issue中标注 `来自wx-robot-ilink` 标签
+
+### 开发流程
+```bash
+# 1. Fork项目
+# 2. 创建功能分支
+git checkout -b feature/新功能
+
+# 3. 修改代码并测试
+make test
+make lint
+
+# 4. 提交PR
+```
+
+### 支持渠道
+- GitHub Issues: https://github.com/liangminmx/hermes-wechat-ilink/issues
+- 标签: `bug`, `enhancement`, `wx-robot-ilink-porting`
 
 ---
 
-**让你的Hermes助手拥有微信超能力！** 🚀
+**立即开始使用**：
+```bash
+# 像使用wx-robot-ilink一样简单，但是Python版！
+git clone https://github.com/liangminmx/hermes-wechat-ilink.git
+cd hermes-wechat-ilink
+./install.sh
 
-> 基于 [wx-robot-ilink](https://github.com/co-pine/wx-robot-ilink) 协议，专为 Hermes AI 助手量身定制。
+# 作为Hermes插件或独立运行，你选择！
+```
+
+体验与wx-robot-ilink相同的功能，但深度集成Hermes AI助手生态！🚀
+
+> 基于 [wx-robot-ilink](https://github.com/co-pine/wx-robot-ilink) 协议移植，为 Hermes Agent 量身定制。

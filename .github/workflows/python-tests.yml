@@ -1,0 +1,47 @@
+name: Python Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-asyncio
+        
+    - name: Test with pytest
+      run: |
+        # 如果有测试目录
+        if [ -d "tests" ]; then
+          python -m pytest tests/ -v
+        else
+          echo "No tests directory found, skipping tests"
+        fi
+        
+    - name: Lint with ruff
+      run: |
+        pip install ruff
+        ruff check hermes_wechat_ilink/ --output-format=github
+        
+    - name: Check formatting with black
+      run: |
+        pip install black
+        black --check hermes_wechat_ilink/

@@ -1,0 +1,15 @@
+{
+  "name": "hermes-wechat-ilink",
+  "version": "0.1.0",
+  "description": "Hermes WeChat plugin based on wx-robot-ilink protocol",
+  "requirements": [
+    "aiohttp>=3.9.0",
+    "qrcode[pil]>=7.4.2",
+    "pillow>=10.0.0"
+  ],
+  "install_script": "install.sh",
+  "env_template": ".env.example",
+  "examples": [
+    "examples/basic_usage.py"
+  ]
+}
