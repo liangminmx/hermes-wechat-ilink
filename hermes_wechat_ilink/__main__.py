@@ -106,7 +106,7 @@ def main():
     print("┌──────────────────────────────────────────┐")
     print("│      🚀 Hermes WeChat iLink Plugin      │")
     print("├──────────────────────────────────────────┤")
-    print("│        版本: 2.0.3 (Debian兼容版)       │")
+    print("│             版本: 2.0.4                 │")
     print("└──────────────────────────────────────────┘")
     
     if args.check_deps:
@@ -117,7 +117,7 @@ def main():
         return 0
     
     if args.version:
-        print("版本: 2.0.3 (Debian兼容版)")
+        print("版本: 2.0.4 (完全修复版)")
         return 0
     
     if args.status:
