@@ -9,54 +9,113 @@ import os
 import time
 import argparse
 
+def check_dependencies():
+    """检查依赖，返回是否缺少依赖"""
+    print("🔍 检查依赖...")
+    missing = []
+    
+    try:
+        import qrcode
+        print("  ✅ qrcode模块: 已安装")
+    except ImportError:
+        missing.append("qrcode")
+        print("  ❌ qrcode模块: 未安装")
+    
+    try:
+        import aiohttp
+        print("  ✅ aiohttp模块: 已安装")
+    except ImportError:
+        missing.append("aiohttp")
+        print("  ❌ aiohttp模块: 未安装")
+    
+    try:
+        from PIL import Image
+        print("  ✅ Pillow模块: 已安装")
+    except ImportError:
+        missing.append("Pillow (for PIL)")
+        print("  ❌ Pillow模块: 未安装")
+    
+    if missing:
+        print("")
+        print("📋 Debian/Ubuntu 23.10+ 安装指南:")
+        print("")
+        print("   # 方法1: 使用系统包管理器 (推荐)")
+        print("   sudo apt install python3-qrcode python3-aiohttp python3-pil")
+        print("")
+        print("   # 方法2: 使用虚拟环境")
+        print("   python3 -m venv /opt/hermes-wechat-venv")
+        print("   source /opt/hermes-wechat-venv/bin/activate")
+        print("   pip install qrcode[pil] aiohttp")
+        print("")
+        print("   # 方法3: 强制安装")
+        print("   pip install qrcode[pil] aiohttp --break-system-packages")
+        print("")
+        print("📁 更多信息请查看: requirements-debian.txt")
+        return False
+    
+    return True
+
+
 def main():
-    parser = argparse.ArgumentParser(description='Hermes WeChat iLink Plugin')
+    parser = argparse.ArgumentParser(description='Hermes WeChat iLink Plugin - Debian兼容版')
     parser.add_argument('--auth', action='store_true', help='微信扫码认证')
     parser.add_argument('--status', action='store_true', help='查看插件状态')
     parser.add_argument('--version', action='store_true', help='显示版本信息')
+    parser.add_argument('--check-deps', action='store_true', help='检查依赖')
     
     # 如果有参数，解析它
     if len(sys.argv) > 1:
         args = parser.parse_args()
     else:
-        args = argparse.Namespace(auth=False, status=False, version=False)
+        args = argparse.Namespace(auth=False, status=False, version=False, check_deps=False)
     
     print("┌──────────────────────────────────────────┐")
     print("│      🚀 Hermes WeChat iLink Plugin      │")
     print("├──────────────────────────────────────────┤")
-    print("│          版本: 2.0.1 (紧急修复)         │")
+    print("│        版本: 2.0.3 (Debian兼容版)       │")
     print("└──────────────────────────────────────────┘")
     
+    if args.check_deps:
+        if check_dependencies():
+            print("✅ 所有依赖都已安装!")
+        else:
+            print("❌ 缺少依赖，请按上面提示安装")
+        return 0
+    
     if args.version:
-        print("版本: 2.0.1 (修复版)")
+        print("版本: 2.0.3 (Debian兼容版)")
         return 0
     
     if args.status:
         print("📊 插件状态:")
         print("  ✅ 插件目录: /opt/hermes-agent/hermes-agent-main/plugins/memory/hermes_wechat_ilink")
         print("  ✅ Python版本: " + sys.version.split()[0])
+        print("  ✅ 当前目录: " + os.getcwd())
         
         # 检查文件
-        files = ['__init__.py', '__main__.py', 'auth_manager.py', 'wechat_client.py', 'plugin.yaml']
+        files = ['__init__.py', '__main__.py', 'auth_manager.py', 'wechat_client.py', 'plugin.yaml', 'requirements.txt']
         for file in files:
             if os.path.exists(file):
                 size = os.path.getsize(file)
-                print(f"  ✅ {file:20} {size} 字节")
+                lines = sum(1 for _ in open(file, 'r', encoding='utf-8', errors='ignore'))
+                print(f"  ✅ {file:20} {size:,} 字节, {lines:,} 行")
             else:
                 print(f"  ❌ {file:20} 缺失")
         
         # 检查依赖
-        try:
-            import qrcode
-            print("  ✅ 二维码模块: 已安装")
-        except ImportError:
-            print("  ⚠️  二维码模块: 未安装 (需要: pip install qrcode[pil])")
-            
-        try:
-            import aiohttp
-            print("  ✅ HTTP客户端: 已安装")
-        except ImportError:
-            print("  ⚠️  HTTP客户端: 未安装 (需要: pip install aiohttp)")
+        print("")
+        print("🔧 依赖状态:")
+        check_dependencies()
+        
+        # Debian检测
+        if os.path.exists("/etc/debian_version"):
+            with open("/etc/debian_version", 'r') as f:
+                debian_ver = f.read().strip()
+            print(f"  📦 Debian版本: {debian_ver}")
+            print("  ⚠️  检测到Debian系统，请使用推荐方法安装依赖")
+        
+        print("")
+        print("📋 快速检查依赖: hermes-wechat --check-deps")
         
         return 0
     
@@ -65,14 +124,25 @@ def main():
         print("")
         
         # 检查依赖
-        try:
-            import qrcode
-            import aiohttp
-            print("✅ 依赖检查通过")
-        except ImportError as e:
-            print(f"⚠️  缺少依赖: {e}")
-            print("📋 请先安装: pip install qrcode[pil] aiohttp")
+        if not check_dependencies():
+            print("")
+            print("❌ 无法开始认证: 缺少必要依赖")
+            print("📋 请先按照上面的提示安装依赖")
+            
+            # 提供快速命令
+            print("")
+            print("🚀 快速安装依赖 (根据系统选择):")
+            if os.path.exists("/etc/debian_version"):
+                print("   方法1: sudo apt install python3-qrcode python3-aiohttp python3-pil")
+                print("   方法2: pip install qrcode[pil] aiohttp --break-system-packages")
+            else:
+                print("   pip install qrcode[pil] aiohttp")
+            
+            print("")
+            print("📁 安装后重新运行: hermes-wechat --auth")
             return 1
+        
+        print("✅ 所有依赖检查通过，继续认证流程...")
         
         print("正在生成登录二维码...")
         print("")
@@ -129,14 +199,21 @@ def main():
         return 0
     
     # 显示帮助
-    print("使用方法:")
-    print("  hermes-wechat --auth      # 微信扫码认证")
-    print("  hermes-wechat --status    # 查看插件状态")
-    print("  hermes-wechat --version   # 版本信息")
+    print("📋 使用方法:")
+    print("  hermes-wechat --auth        # 微信扫码认证")
+    print("  hermes-wechat --status      # 查看插件状态")
+    print("  hermes-wechat --check-deps  # 检查依赖安装情况")
+    print("  hermes-wechat --version     # 版本信息")
+    print("")
+    print("🔧 Debian/Ubuntu专属命令:")
+    print("  hermes-wechat --check-deps  # 显示依赖安装指南")
     print("")
     print("📁 备用命令:")
     print("  cd /opt/hermes-agent/hermes-agent-main/plugins/memory/hermes_wechat_ilink")
     print("  python3 __main__.py --auth")
+    print("  ./run.sh --auth")
+    print("")
+    print("🌐 GitHub仓库: https://github.com/liangminmx/hermes-wechat-ilink")
     
     return 0
 
